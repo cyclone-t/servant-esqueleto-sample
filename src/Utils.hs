@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Utils where
 
 import           Cases (snakify)
 import           Control.Exception (ErrorCall)
-import           Control.Exception.Safe as Ex (Handler(Handler), catches, throwM)
+import           Control.Exception.Safe as Ex (Handler(Handler), MonadCatch, MonadThrow, catches, throwM)
+import           Control.Monad.Except (ExceptT, MonadError)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Reader (MonadIO, MonadReader, ReaderT, ask, asks)
 import           Control.Monad.Logger (logDebugNS, logErrorNS, logInfoNS, logWarnNS, runLoggingT)
@@ -31,7 +33,10 @@ data Config
     , getApplicationFlag :: Bool
     }
 
-type App = ReaderT Config Sv.Handler
+newtype App a = App
+    { runApp :: ReaderT Config (ExceptT ServantErr IO) a
+    } deriving ( Functor, Applicative, Monad, MonadReader Config,
+                 MonadError ServantErr, MonadIO, MonadThrow, MonadCatch)
 
 type SqlPersistM' = SqlPersistT (ResourceT IO)
 

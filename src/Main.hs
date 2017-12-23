@@ -5,8 +5,10 @@
 module Main where
 
 import           Control.Monad                        (unless)
+import           Control.Monad.Except                 (ExceptT)
 import           Control.Monad.Logger                 (logInfoNS, runNoLoggingT,
                                                        runStdoutLoggingT)
+import           Control.Monad.Reader                 (runReaderT)
 import           Control.Monad.Trans.Resource         (runResourceT)
 import           Data.Default                         (def)
 import           Data.Semigroup                       ((<>))
@@ -92,7 +94,10 @@ app :: Config -> Application
 app = serve api . appToServer
 
 appToServer :: Config -> Server API
-appToServer cfg = enter (runReaderTNat cfg :: App :~> Sv.Handler) server
+appToServer cfg = enter (convertApp cfg) server
+
+convertApp :: Config -> App :~> ExceptT ServantErr IO
+convertApp cfg = Nat (flip runReaderT cfg . runApp)
 
 type Server' api = ServerT api App
 
